@@ -38,6 +38,12 @@ const commands: Record<string, Command> = {
     href: process.env.NEXT_PUBLIC_CALENDAR_URL,
     description: "schedule a meeting with me",
   },
+  "./contact": {
+    output: process.env.NEXT_PUBLIC_EMAIL,
+  },
+  "./resume": {
+    href: process.env.NEXT_PUBLIC_RESUME_URL,
+  },
   "./music": {
     description: "what i'm currently listening to",
   },
