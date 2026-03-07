@@ -12,16 +12,35 @@ interface TerminalWindowProps {
 interface HistoryEntry {
   command: string;
   output: string;
+  url?: string;
 }
 
-const commands: Record<string, string> = {
-    "./about_me": [
+interface Command {
+  output?: string;
+  description?: string;
+  href?: string;
+}
+
+const commands: Record<string, Command> = {
+  "./about_me": {
+    output: [
       "hi! i'm joonhee park.",
       "professions that define me: software developer, musician, part-time tutor.",
       "previously @ Bytedance, Tegus, Yale.",
-      "type to chat with an ai instructed to answer questions about me, or try ./list-commands to explore!",
+      "type to chat with me (an AI prompted to answer basic questions in my place), or try ./list_commands to explore!",
     ].join("\n"),
-  "./list-commands": "",
+  },
+  "./clear": {
+    description: "clear history",
+  },
+  "./list_commands": {},
+  "./calendar": {
+    href: process.env.NEXT_PUBLIC_CALENDAR_URL,
+    description: "schedule a meeting with me",
+  },
+  "./music": {
+    description: "what i'm currently listening to",
+  },
 };
 
 export default function TerminalWindow({
@@ -32,15 +51,27 @@ export default function TerminalWindow({
 }: TerminalWindowProps) {
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([
-    { command: "./about_me", output: commands["./about_me"] },
+    { command: "./about_me", output: commands["./about_me"].output ?? "" },
   ]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   function handleCommand(cmd: string): string {
     const trimmed = cmd.trim();
-    if (trimmed === "./list-commands") return `${Object.keys(commands).join("  ")}`;
-    if (trimmed in commands) return commands[trimmed];
+    if (trimmed === "./list_commands") {
+      return Object.entries(commands)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([name, cmd]) => cmd.description ? `${name}  -> ${cmd.description}` : name)
+        .join("\n");
+    }
+    const entry = commands[trimmed];
+    if (entry) {
+      if (entry.href) {
+        window.open(entry.href, "_blank", "noopener,noreferrer");
+        return "";
+      }
+      return entry.output ?? "";
+    }
     if (trimmed.startsWith("./")) return "please enter a valid command";
     return "";
   }
@@ -79,10 +110,53 @@ export default function TerminalWindow({
     }
   }
 
+  async function fetchMusic(entryIdx: number) {
+    try {
+      const res = await fetch("/api/music");
+      const data = await res.json();
+      let output: string;
+      let url: string | undefined;
+      if (!res.ok) {
+        if (data.errorCode === "NOT_CONFIGURED" || data.errorCode === "AUTH_FAILED") output = "internal error, try again later";
+        else output = data.message ?? "error fetching music";
+      } else if (!data.playing) {
+        output = "not listening right now, but i usually am — check again later!";
+      } else {
+        output = `${data.artist} — ${data.track}`;
+        url = data.url;
+      }
+      setHistory((prev) => {
+        const updated = [...prev];
+        updated[entryIdx] = { command: "./music", output, url };
+        return updated;
+      });
+    } catch {
+      setHistory((prev) => {
+        const updated = [...prev];
+        updated[entryIdx] = { command: "./music", output: "error reaching server" };
+        return updated;
+      });
+    }
+  }
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Enter") {
         const trimmed = input.trim();
+        if (trimmed === "./clear") {
+          setHistory([{ command: "./about_me", output: commands["./about_me"].output ?? "" }]);
+          setHistoryIndex(-1);
+          setInput("");
+          return;
+        }
+        if (trimmed === "./music") {
+          const entryIdx = history.length;
+          setHistory((prev) => [...prev, { command: input, output: "..." }]);
+          fetchMusic(entryIdx);
+          setHistoryIndex(-1);
+          setInput("");
+          return;
+        }
         if (trimmed.startsWith("./")) {
           const output = handleCommand(trimmed);
           setHistory((prev) => [...prev, { command: input, output }]);
@@ -160,7 +234,20 @@ export default function TerminalWindow({
               <Prompt />
               <span style={{ color: "var(--ctp-text)" }}>{entry.command}</span>
             </div>
-            <div style={{ color: "var(--ctp-yellow)", whiteSpace: "pre-wrap" }}>{entry.output}</div>
+            <div style={{ color: "var(--ctp-yellow)", whiteSpace: "pre-wrap" }}>
+              {entry.url ? (
+                <>
+                  <span style={{ marginRight: "6px" }}>
+                    {[0, -0.15, -0.3, -0.45, -0.6].map((delay, i) => (
+                      <span key={i} className="eq-bar" style={{ animationDelay: `${delay}s` }} />
+                    ))}
+                  </span>
+                  <a href={entry.url} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline", cursor: "pointer" }}>
+                    {entry.output}
+                  </a>
+                </>
+              ) : entry.output}
+            </div>
           </div>
         ))}
         <div style={{ overflowWrap: "break-word" }}>
