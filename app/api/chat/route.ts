@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { Redis } from "@upstash/redis";
+import { Ratelimit } from "@upstash/ratelimit";
 
 const SYSTEM_PROMPT = `You are representing Joonhee Park. You are tasked with professionally answering questions about Joonhee Park, given the information provided in this prompt. Answer in the first person.
 
@@ -37,8 +39,31 @@ Example questions and responses:
 
 `;
 
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.fixedWindow(20, "1 d"),
+  prefix: "chat_ratelimit",
+});
+
 export async function POST(request: NextRequest) {
   try {
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+      request.headers.get("x-real-ip") ??
+      "unknown";
+
+    const allowedIPs = (process.env.ALLOWED_IPS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    if (!allowedIPs.includes(ip)) {
+      const { success, remaining } = await ratelimit.limit(ip);
+      if (!success) {
+        console.log(`[chat] Rate limit exceeded for IP: ${ip}`);
+        return NextResponse.json({ errorCode: "RATE_LIMITED" }, { status: 429 });
+      }
+      console.log(`[chat] IP ${ip} has ${remaining} requests remaining today`);
+    } else {
+       console.log(`[chat] IP ${ip} is allowlisted, skipping rate limit`);
+    }
+
     const body = await request.json();
     const message = typeof body?.message === "string" ? body.message.trim() : "";
 
