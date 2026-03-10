@@ -47,30 +47,25 @@ const ratelimit = new Ratelimit({
 
 export async function POST(request: NextRequest) {
   try {
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
-      request.headers.get("x-real-ip") ??
-      "unknown";
-
-    const allowedIPs = (process.env.ALLOWED_IPS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-    if (!allowedIPs.includes(ip)) {
-      const { success, remaining } = await ratelimit.limit(ip);
-      if (!success) {
-        console.log(`[chat] Rate limit exceeded for IP: ${ip}`);
-        return NextResponse.json({ errorCode: "RATE_LIMITED" }, { status: 429 });
-      }
-      console.log(`[chat] IP ${ip} has ${remaining} requests remaining today`);
-    } else {
-       console.log(`[chat] IP ${ip} is allowlisted, skipping rate limit`);
-    }
-
     const body = await request.json();
     const message = typeof body?.message === "string" ? body.message.trim() : "";
 
     console.log("[chat] Message received:", message);
-
     if (message.length <= 2) {
       return NextResponse.json({ errorCode: "INVALID_QUESTION" }, { status: 400 });
+    }
+
+    // rate limit
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+      request.headers.get("x-real-ip") ??
+      "unknown";
+    const allowedIPs = (process.env.ALLOWED_IPS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    if (!allowedIPs.includes(ip)) {
+      const { success } = await ratelimit.limit(ip);
+      if (!success) {
+        return NextResponse.json({ errorCode: "RATE_LIMITED" }, { status: 429 });
+      }
     }
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -97,7 +92,7 @@ export async function POST(request: NextRequest) {
     const reply = (textBlock && "text" in textBlock ? textBlock.text : "don't know").trim();
     const replyLower = reply.toLowerCase();
 
-    if (replyLower.includes("don't know") || replyLower.includes("dont know")) {
+    if (replyLower.includes("don't know")) {
       console.log("[chat] Claude replied don't know → 400 DONT_KNOW");
       return NextResponse.json({ errorCode: "DONT_KNOW" }, { status: 400 });
     }
