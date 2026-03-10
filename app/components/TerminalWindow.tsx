@@ -98,7 +98,7 @@ export default function TerminalWindow({
       if (!res.ok) {
         if (data.errorCode === "DONT_KNOW") output = "i don't know the answer to this question";
         else if (data.errorCode === "INVALID_QUESTION") output = "please enter a valid/intelligible question";
-        else if (data.errorCode === "RATE_LIMITED") output = "you've reached the daily limit of 20 questions — come back tomorrow!";
+        else if (data.errorCode === "RATE_LIMITED") output = "daily question limit reached, try again tomorrow! i do accept LLM token donations :)";
         else output = data.message ?? "error";
       } else {
         output = data.message;
