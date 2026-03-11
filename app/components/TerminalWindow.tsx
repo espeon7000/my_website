@@ -21,11 +21,15 @@ interface Command {
   href?: string;
 }
 
+const skills = ["golang", "python", "java", "ruby", "typescript"];
+
 const commands: Record<string, Command> = {
   "./about_me": {
     output: [
-      "hi! i'm joonhee park.",
-      "professions that define me: software developer, musician, part-time tutor.",
+      "hi! i'm joonhee park :)",
+      "software developer, musician, part-time tutor.",
+      "skills:",
+      ...skills.map((s) => `  • ${s}`),
       "previously @ Bytedance, Tegus, Yale.",
       "type to chat with me (an AI prompted to answer basic questions in my place), or try ./list_commands to explore!",
     ].join("\n"),
