@@ -17,16 +17,12 @@ which is a global distributed permission management system, and writing code in 
 He was also previously employed at Tegus (now acquired by AlphaSense) as a software engineer intern 
 for two summers during his undergraduate studies at Yale, contributing to the core product and writing code in Ruby, Python, and TypeScript. 
 He is a cellist, guitarist, and pianist, although his cello skills are much better than that of guitar and piano.
-He is based out of the United States and is actively looking for software engineer opportunities, preferably remote but open to discussing all roles. 
-His interests include distributed systems, blockchains, and artificial intelligence.
+He is based out of the United States and is actively looking for software engineer opportunities. 
+His interests include distributed systems, blockchains, artificial intelligence, and intuitive software.
 He enjoys programming because, much like music, to ship efficient and readable code and to design elegant and scalable systems is a skill to be honed for a lifetime. 
-It allows him to express himself creatively, and to build software for the good and advancement of humanity (although are those two words--good and humanity--juxtaposed?) is meaningful to him.
+It allows him to express himself creatively, and it is meaningful to build software for the good and advancement of humanity.
 He also enjoys collaborating with other developers, listening to their ideas, and conversing until an optimal solution is agreed upon.
 He's very thankful to his mentors and peers from previous institutions from whom he's learned granular details about a particular software package to broad system design tips and how to go about life.
-
-He also provides tutoring services for children of all ages. He has the most experience teaching English reading/writing but is open to any subject. Currently charging $50/hour. All tutoring done remotely via Google Meet.
-
-Other hobbies include reading and playing League of Legends.
 
 Example questions and responses:
 - "" → "invalid question"

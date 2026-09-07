@@ -13,12 +13,17 @@ interface HistoryEntry {
   command: string;
   output: string;
   url?: string;
+  link?: { text: string; href: string };
 }
+
+const GITHUB_URL = "https://github.com/espeon7000";
+const LINK_MARKER = "{{LINK}}";
 
 interface Command {
   output?: string;
   description?: string;
   href?: string;
+  link?: { text: string; href: string };
 }
 
 const skills = ["golang", "python", "java", "ruby", "typescript"];
@@ -26,13 +31,15 @@ const skills = ["golang", "python", "java", "ruby", "typescript"];
 const commands: Record<string, Command> = {
   "./about_me": {
     output: [
-      "hi! i'm joonhee park :)",
-      "software developer, musician, part-time tutor.",
+      "hi! i'm joonhee park (he/him) :)",
+      "i'm a software developer, enjoyer of music and books and games",
+      LINK_MARKER,
       "skills:",
       ...skills.map((s) => `  • ${s}`),
-      "previously @ Bytedance, Tegus, Yale.",
+      "previously @ Bytedance (security), Tegus (fullstack), Yale CS + Econ.",
       "type to chat with me (an AI prompted to answer basic questions in my place), or try ./list_commands to explore!",
     ].join("\n"),
+    link: { text: "github", href: GITHUB_URL },
   },
   "./clear": {
     description: "clear history",
@@ -51,6 +58,10 @@ const commands: Record<string, Command> = {
   "./music": {
     description: "what i'm currently listening to",
   },
+  "./projects": {
+    href: GITHUB_URL,
+    description: "check out my projects on github",
+  },
 };
 
 export default function TerminalWindow({
@@ -61,7 +72,7 @@ export default function TerminalWindow({
 }: TerminalWindowProps) {
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([
-    { command: "./about_me", output: commands["./about_me"].output ?? "" },
+    { command: "./about_me", output: commands["./about_me"].output ?? "", link: commands["./about_me"].link },
   ]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -112,7 +123,8 @@ export default function TerminalWindow({
         updated[entryIdx] = { command: cmd, output };
         return updated;
       });
-    } catch {
+    } catch (err) {
+      console.error("[chat] fetch failed:", err);
       setHistory((prev) => {
         const updated = [...prev];
         updated[entryIdx] = { command: cmd, output: "error reaching server" };
@@ -128,6 +140,7 @@ export default function TerminalWindow({
       let output: string;
       let url: string | undefined;
       if (!res.ok) {
+        console.error("[music] request failed:", res.status, data);
         if (data.errorCode === "NOT_CONFIGURED" || data.errorCode === "AUTH_FAILED") output = "internal error, try again later";
         else output = data.message ?? "error fetching music";
       } else if (!data.playing) {
@@ -141,7 +154,8 @@ export default function TerminalWindow({
         updated[entryIdx] = { command: "./music", output, url };
         return updated;
       });
-    } catch {
+    } catch (err) {
+      console.error("[music] fetch failed:", err);
       setHistory((prev) => {
         const updated = [...prev];
         updated[entryIdx] = { command: "./music", output: "error reaching server" };
@@ -152,10 +166,11 @@ export default function TerminalWindow({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "Enter") {
         const trimmed = input.trim();
         if (trimmed === "./clear") {
-          setHistory([{ command: "./about_me", output: commands["./about_me"].output ?? "" }]);
+          setHistory([{ command: "./about_me", output: commands["./about_me"].output ?? "", link: commands["./about_me"].link }]);
           setHistoryIndex(-1);
           setInput("");
           return;
@@ -170,7 +185,8 @@ export default function TerminalWindow({
         }
         if (trimmed.startsWith("./")) {
           const output = handleCommand(trimmed);
-          setHistory((prev) => [...prev, { command: input, output }]);
+          const link = commands[trimmed]?.link;
+          setHistory((prev) => [...prev, { command: input, output, link }]);
         } else {
           const entryIdx = history.length;
           setHistory((prev) => [...prev, { command: input, output: "..." }]);
@@ -257,7 +273,25 @@ export default function TerminalWindow({
                     {entry.output}
                   </a>
                 </>
-              ) : entry.output}
+              ) : entry.link ? (
+                (() => {
+                  const [before, after] = entry.output.includes(LINK_MARKER)
+                    ? entry.output.split(LINK_MARKER)
+                    : [entry.output, ""];
+                  return (
+                    <>
+                      {before}
+                      {!before.endsWith("\n") && " "}
+                      <a href={entry.link.href} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline", cursor: "pointer" }}>
+                        {entry.link.text}
+                      </a>
+                      {after}
+                    </>
+                  );
+                })()
+              ) : (
+                entry.output
+              )}
             </div>
           </div>
         ))}
